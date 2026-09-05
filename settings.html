@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - SmartRoute</title>
+    
+    <!-- CDNs -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
+
+    <!-- Local Assets -->
+        <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="css/components.css">
+    
+    <style>
+        .settings-layout {
+            display: flex;
+            gap: 30px;
+            height: calc(100vh - 120px);
+        }
+        .settings-nav {
+            width: 250px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .nav-pill {
+            padding: 15px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            background: rgba(255,255,255,0.02);
+            color: #aaa;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .nav-pill:hover {
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+        }
+        .nav-pill.active {
+            background: rgba(0, 212, 255, 0.1);
+            color: #00d4ff;
+            border-left: 4px solid #00d4ff;
+            box-shadow: 0 4px 15px rgba(0, 212, 255, 0.1);
+        }
+        
+        .settings-content {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 15px;
+        }
+        .panel {
+            display: none;
+            animation: fadeIn 0.4s ease forwards;
+        }
+        .panel.active {
+            display: block;
+        }
+        
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .setting-row:last-child {
+            border-bottom: none;
+        }
+        .setting-info h4 { margin: 0 0 5px 0; color: #fff; }
+        .setting-info p { margin: 0; color: #aaa; font-size: 0.9rem; }
+        
+        /* 3D Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(255,255,255,0.1);
+            transition: .4s;
+            border-radius: 34px;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+        }
+        .slider:before {
+            position: absolute; content: "";
+            height: 26px; width: 26px;
+            left: 4px; bottom: 4px;
+            background-color: #aaa;
+            transition: .4s;
+            border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+        input:checked + .slider {
+            background-color: rgba(0, 212, 255, 0.2);
+            border: 1px solid #00d4ff;
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+        }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+            background-color: #00d4ff;
+            box-shadow: 0 0 10px #00d4ff;
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        .avatar-lg {
+            width: 100px; height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00d4ff, #b050ff);
+            display: flex; justify-content: center; align-items: center;
+            font-size: 2.5rem; font-weight: bold; color: #000;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+        }
+        
+        select.form-control, input.form-control {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(100,200,255,0.2);
+            color: #fff;
+            padding: 10px 15px;
+            border-radius: 8px;
+            width: 200px;
+            outline: none; font-family: inherit;
+        }
+        select.form-control:focus, input.form-control:focus {
+            border-color: #00d4ff;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <div class="main-content" id="main-content">
+            <main class="page-body">
+                
+                <div class="settings-layout">
+                    <div class="settings-nav glass-card">
+                        <div class="nav-pill" onclick="switchPanel('profile')">PROFILE</div>
+                        <div class="nav-pill" onclick="switchPanel('security')">SECURITY</div>
+                        <div class="nav-pill active" onclick="switchPanel('notifications')">NOTIFICATIONS</div>
+                        <div class="nav-pill" onclick="switchPanel('map')">MAP</div>
+                        <div class="nav-pill" onclick="switchPanel('gps')">GPS</div>
+                        <div class="nav-pill" onclick="switchPanel('alerts')">ALERTS</div>
+                        <div class="nav-pill" onclick="switchPanel('language')">LANGUAGE</div>
+                    </div>
+                    
+                    <div class="settings-content glass-card" style="padding: 30px;">
+                        
+                        <!-- Profile -->
+                        <div id="panel-profile" class="panel">
+                            <h2 style="margin-top:0; color:#00d4ff;">Profile Settings</h2>
+                            <div class="profile-header">
+                                <div class="avatar-lg">AD</div>
+                                <div>
+                                    <h1 style="margin:0;">Admin Officer</h1>
+                                    <p style="color:#aaa; font-size:1.1rem;">Administrator • HQ</p>
+                                </div>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <h4>Email Address</h4>
+                                    <p>admin@smartroute.gov.in</p>
+                                </div>
+                                <button class="btn-primary">EDIT</button>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <h4>Phone Number</h4>
+                                    <p>+91 98765 43210</p>
+                                </div>
+                                <button class="btn-primary">EDIT</button>
+                            </div>
+                        </div>
+
+                        <!-- Notifications -->
+                        <div id="panel-notifications" class="panel active">
+                            <h2 style="margin-top:0; color:#00d4ff;">Notification Preferences</h2>
+                            
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <h4>Critical Alerts</h4>
+                                    <p>Receive immediate alerts for structural failures or severe weather</p>
+                                </div>
+                                <label class="toggle-switch"><input type="checkbox" checked><span class="slider"></span></label>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <h4>High Priority Alerts</h4>
+                                    <p>Get notified for major roadblocks and vehicle delays</p>
+                                </div>
+                                <label class="toggle-switch"><input type="checkbox" checked><span class="slider"></span></label>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <h4>Vehicle Delay Alerts</h4>
+                                    <p>Alerts when emergency vehicles deviate from schedule</p>
+                                </div>
+                                <label class="toggle-switch"><input type="checkbox" checked><span class="slider"></span></label>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <h4>Weather Alerts</h4>
+                                    <p>Updates on rainfall intensity and flood risks</p>
+                                </div>
+                                <label class="toggle-switch"><input type="checkbox" checked><span class="slider"></span></label>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <h4>Field Officer Updates</h4>
+                                    <p>Notifications when field officers upload reports</p>
+                                </div>
+                                <label class="toggle-switch"><input type="checkbox" checked><span class="slider"></span></label>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <h4>System Updates</h4>
+                                    <p>Maintenance and version upgrade notices</p>
+                                </div>
+                                <label class="toggle-switch"><input type="checkbox"><span class="slider"></span></label>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <h4>Email Notifications</h4>
+                                    <p>Receive summaries via email</p>
+                                </div>
+                                <label class="toggle-switch"><input type="checkbox" checked><span class="slider"></span></label>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <h4>SMS Notifications</h4>
+                                    <p>Text alerts for assigned field officers</p>
+                                </div>
+                                <label class="toggle-switch"><input type="checkbox" checked><span class="slider"></span></label>
+                            </div>
+                        </div>
+
+                        <!-- Map -->
+                        <div id="panel-map" class="panel">
+                            <h2 style="margin-top:0; color:#00d4ff;">Map Configurations</h2>
+                            
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <h4>Show 3D Terrain</h4>
+                                    <p>Enable topological features on the map</p>
+                                </div>
+                                <label class="toggle-switch"><input type="checkbox" checked><span class="slider"></span></label>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <h4>Animate Vehicles</h4>
+                                    <p>Smooth transition for live GPS tracking</p>
+                                </div>
+                                <label class="toggle-switch"><input type="checkbox" checked><span class="slider"></span></label>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <h4>Show Flood Zones</h4>
+                                    <p>Overlay active risk polygons</p>
+                                </div>
+                                <label class="toggle-switch"><input type="checkbox" checked><span class="slider"></span></label>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <h4>Show Traffic</h4>
+                                    <p>Overlay real-time traffic density data</p>
+                                </div>
+                                <label class="toggle-switch"><input type="checkbox" checked><span class="slider"></span></label>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <h4>Map Theme</h4>
+                                </div>
+                                <select class="form-control">
+                                    <option>Dark (Default)</option>
+                                    <option>Light</option>
+                                    <option>Satellite</option>
+                                </select>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <h4>Default Zoom</h4>
+                                </div>
+                                <input type="range" min="5" max="18" value="9" style="width:200px;">
+                            </div>
+                        </div>
+
+                        <!-- GPS -->
+                        <div id="panel-gps" class="panel">
+                            <h2 style="margin-top:0; color:#00d4ff;">GPS Settings</h2>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <h4>Auto GPS Tracking</h4>
+                                    <p>Continuously fetch live vehicle locations</p>
+                                </div>
+                                <label class="toggle-switch"><input type="checkbox" checked><span class="slider"></span></label>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <h4>GPS Refresh Rate</h4>
+                                </div>
+                                <select class="form-control">
+                                    <option>5 seconds</option>
+                                    <option>10 seconds</option>
+                                    <option>30 seconds</option>
+                                    <option>60 seconds</option>
+                                </select>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <h4>Show GPS Trail</h4>
+                                    <p>Display historical path of vehicles (last 1 hour)</p>
+                                </div>
+                                <label class="toggle-switch"><input type="checkbox" checked><span class="slider"></span></label>
+                            </div>
+                        </div>
+                        
+                        <!-- Alerts -->
+                        <div id="panel-alerts" class="panel">
+                            <h2 style="margin-top:0; color:#00d4ff;">Alert Settings</h2>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <h4>Alert Sound</h4>
+                                    <p>Play audio when critical alert arrives</p>
+                                </div>
+                                <label class="toggle-switch"><input type="checkbox" checked><span class="slider"></span></label>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <h4>Alert Threshold</h4>
+                                </div>
+                                <select class="form-control">
+                                    <option>All Severities</option>
+                                    <option>Medium and Above</option>
+                                    <option>High and Critical Only</option>
+                                    <option>Critical Only</option>
+                                </select>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <h4>Auto-acknowledge after</h4>
+                                </div>
+                                <select class="form-control">
+                                    <option>30 minutes</option>
+                                    <option>1 hour</option>
+                                    <option>4 hours</option>
+                                    <option>Never</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Security -->
+                        <div id="panel-security" class="panel">
+                            <h2 style="margin-top:0; color:#00d4ff;">Security</h2>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <h4>Two-Factor Authentication</h4>
+                                    <p>Require OTP for login</p>
+                                </div>
+                                <label class="toggle-switch"><input type="checkbox"><span class="slider"></span></label>
+                            </div>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <h4>Session Timeout</h4>
+                                </div>
+                                <select class="form-control">
+                                    <option>30 minutes</option>
+                                    <option>1 hour</option>
+                                    <option>4 hours</option>
+                                </select>
+                            </div>
+                            <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 15px;">
+                                <h4>Change Password</h4>
+                                <input type="password" class="form-control" placeholder="Current Password">
+                                <input type="password" class="form-control" placeholder="New Password">
+                                <button class="btn-primary">UPDATE PASSWORD</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Language -->
+                        <div id="panel-language" class="panel">
+                            <h2 style="margin-top:0; color:#00d4ff;">Language & Region</h2>
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <h4>Interface Language</h4>
+                                </div>
+                                <select class="form-control">
+                                    <option>English</option>
+                                    <option>Telugu (తెలుగు)</option>
+                                    <option>Hindi (हिन्दी)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <script src="js/components.js"></script>
+    <script src="js/map-engine.js"></script>
+    <script src="js/charts.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if(window.SmartRoute) {
+                SmartRoute.initSharedComponents({title: 'Settings', subtitle: 'System Configuration & Preferences'});
+            }
+
+            // Restore toggle states and wire change events
+            const toggles = document.querySelectorAll('.toggle-switch input');
+            toggles.forEach((t, idx) => {
+                const key = `sr_setting_toggle_${idx}`;
+                const saved = localStorage.getItem(key);
+                if(saved !== null) {
+                    t.checked = saved === 'true';
+                }
+                t.addEventListener('change', () => {
+                    localStorage.setItem(key, t.checked);
+                    if(window.SmartRoute && SmartRoute.showToast) {
+                        SmartRoute.showToast('Preference updated and saved.', 'success');
+                    }
+                });
+            });
+
+            // Restore dropdowns
+            const selects = document.querySelectorAll('select.form-control');
+            selects.forEach((sel, idx) => {
+                const key = `sr_setting_select_${idx}`;
+                const saved = localStorage.getItem(key);
+                if(saved !== null) sel.value = saved;
+                sel.addEventListener('change', () => {
+                    localStorage.setItem(key, sel.value);
+                    if(window.SmartRoute && SmartRoute.showToast) {
+                        SmartRoute.showToast(`Updated to: ${sel.value}`, 'info');
+                    }
+                });
+            });
+
+            // Wire buttons
+            const buttons = document.querySelectorAll('.settings-content button');
+            buttons.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const text = btn.textContent.trim();
+                    if(window.SmartRoute && SmartRoute.showToast) {
+                        if(text.includes('PASSWORD')) {
+                            SmartRoute.showToast('Security credentials updated successfully.', 'success');
+                        } else if(text.includes('EDIT')) {
+                            SmartRoute.showToast('Profile field unlocked for editing.', 'info');
+                        } else {
+                            SmartRoute.showToast(`${text} action confirmed.`, 'success');
+                        }
+                    }
+                });
+            });
+        });
+
+        function switchPanel(panelId) {
+            // Update tabs
+            document.querySelectorAll('.nav-pill').forEach(el => el.classList.remove('active'));
+            if(event && event.target) {
+                event.target.classList.add('active');
+            }
+            
+            // Update panels
+            document.querySelectorAll('.panel').forEach(el => el.classList.remove('active'));
+            const target = document.getElementById(`panel-${panelId}`);
+            if(target) target.classList.add('active');
+        }
+    </script>
+</body>
+</html>
